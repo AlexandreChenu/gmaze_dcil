@@ -469,7 +469,7 @@ class GMazeDCILDubins(GMazeGoalDubins):
 
         self.do_overshoot = True
 
-        self.skill_manager = SkillsManager("/Users/chenu/Desktop/PhD/github/dcil/demos/toy_dubinsmazeenv/1.demo", self) ## skill length in time-steps
+        self.skill_manager = SkillsManager("/home/perrin/Desktop/work/code/gmaze_dcil/gym_gmazes/envs/dubins_ac/demos/1.demo", self) ## skill length in time-steps
 
     @torch.no_grad()
     def step(self,action: np.ndarray):

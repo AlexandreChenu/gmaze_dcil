@@ -310,7 +310,7 @@ if (__name__=='__main__'):
 	env = GMazeGoalDubins(device="cpu", num_envs=6)
 	env.reset()
 
-	demo_path = "/Users/chenu/Desktop/PhD/github/dcil/demos/toy_dubinsmazeenv/1.demo"
+	demo_path = "/home/perrin/Desktop/work/code/gmaze_dcil/gym_gmazes/envs/dubins_ac/demos/1.demo"
 	sm = SkillsManager(demo_path, env)
 
 	print("length full demo = ", len(sm.L_full_demonstration))
