@@ -107,7 +107,7 @@ class GMazeCommon(Maze):
         self.action_space = gym.vector.utils.batch_space(
             self.single_action_space,
             self.num_envs)
-        self.max_episode_steps = 50
+        self.max_episode_steps = 70
 
     @abstractmethod
     def reset_done(self, options=None, seed: Optional[int] = None, infos=None):
@@ -205,10 +205,11 @@ class GMazeDubins(GMazeCommon, gym.Env, utils.EzPickle, ABC):
         new_orientation = state[:,2] + steer * delta_t
 
         ## check limit angles
-        b_angle_admissible = torch.logical_and(new_orientation <= MAX_STEER, new_orientation >= MIN_STEER).reshape(state[:,2].shape).double()
-        b_angle_non_admissible = (1. - b_angle_admissible).reshape(state[:,2].shape)
+        # b_angle_admissible = torch.logical_and(new_orientation <= MAX_STEER, new_orientation >= MIN_STEER).reshape(state[:,2].shape).double()
+        # b_angle_non_admissible = (1. - b_angle_admissible).reshape(state[:,2].shape)
+        state[:,2] = (new_orientation + np.pi) % (2.0 * np.pi) - np.pi
 
-        state[:,2] = state[:,2] * b_angle_non_admissible + new_orientation * b_angle_admissible
+        # state[:,2] = state[:,2] * b_angle_non_admissible + new_orientation * b_angle_admissible
 
         return state
 
@@ -393,7 +394,7 @@ class GMazeGoalDubins(GMazeCommon, GoalEnv, utils.EzPickle, ABC):
     @torch.no_grad()
     def update_state(self, state, action, delta_t):
 
-        MAX_SPEED = 0.5
+        MAX_SPEED = 0.5 / 2.
         MAX_STEER = torch.pi
         MIN_STEER = -torch.pi
 
@@ -402,13 +403,15 @@ class GMazeGoalDubins(GMazeCommon, GoalEnv, utils.EzPickle, ABC):
         ## update x, y, theta
         state[:,0] = state[:,0] + MAX_SPEED*torch.cos(state[:,2]) * delta_t
         state[:,1] = state[:,1] + MAX_SPEED*torch.sin(state[:,2]) * delta_t
-        new_orientation = state[:,2] + steer * delta_t
+        new_orientation = state[:,2] + steer * delta_t * 10.
 
         ## check limit angles
-        b_angle_admissible = torch.logical_and(new_orientation <= MAX_STEER, new_orientation >= MIN_STEER).reshape(state[:,2].shape).double()
-        b_angle_non_admissible = (1. - b_angle_admissible).reshape(state[:,2].shape)
+        # b_angle_admissible = torch.logical_and(new_orientation <= MAX_STEER, new_orientation >= MIN_STEER).reshape(state[:,2].shape).double()
+        # b_angle_non_admissible = (1. - b_angle_admissible).reshape(state[:,2].shape)
 
-        state[:,2] = state[:,2] * b_angle_non_admissible + new_orientation * b_angle_admissible
+        # state[:,2] = state[:,2] * b_angle_non_admissible + new_orientation * b_angle_admissible
+
+        state[:, 2] = (new_orientation + np.pi) % (2.0 * np.pi) - np.pi
 
         return state
 
@@ -418,7 +421,7 @@ class GMazeGoalDubins(GMazeCommon, GoalEnv, utils.EzPickle, ABC):
         return new_state
 
     @torch.no_grad()
-    def step(self,action: np.ndarray):
+    def step(self, action: np.ndarray):
         action = torch.tensor(action).to(self.device)
 
         for i in range(self.frame_skip):
@@ -473,6 +476,7 @@ class GMazeDCILDubins(GMazeGoalDubins):
 
     @torch.no_grad()
     def step(self,action: np.ndarray):
+
         action = torch.tensor(action).to(self.device)
 
         for i in range(self.frame_skip):
@@ -483,6 +487,7 @@ class GMazeDCILDubins(GMazeGoalDubins):
         self.state = self.state * intersection + new_state * torch.logical_not(
             intersection
         )
+        self.state[:, 2] = new_state[:, 2]
 
         reward = self.compute_reward(self.project_to_goal_space(self.state), self.goal, {}).reshape(
             (self.num_envs, 1))
@@ -577,7 +582,8 @@ class GMazeDCILDubins(GMazeGoalDubins):
 
         zeros = torch.zeros(self.num_envs, dtype=torch.int).to(self.device)
         self.steps = torch.where(self.done.flatten() == 1, zeros, self.steps)
-        self.max_episode_steps = torch.where(self.done == 1, length_skill, self.max_episode_steps)
+        # self.max_episode_steps = torch.where(self.done == 1, length_skill, self.max_episode_steps)
+        self.max_episode_steps = torch.where(self.done == 1, self.max_episode_steps, self.max_episode_steps)
         self.goal = torch.where(self.done == 1, goal, self.goal).to(self.device)
         return {
             'observation': self.state.detach().cpu().numpy(),
