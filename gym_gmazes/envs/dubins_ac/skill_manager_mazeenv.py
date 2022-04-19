@@ -21,14 +21,14 @@ class SkillsManager():
 		self.num_envs = env.num_envs
 		self.device = env.device
 
-		self.eps_state = 2. ## threshold distance in goal space for skill construction
+		self.eps_state = 1. ## threshold distance in goal space for skill construction
 		self.beta = 1.25
 
 		self.L_full_demonstration = self.extract_from_demo(demo_path)
 		self.L_states, self.L_budgets = self.clean_demo(self.L_full_demonstration)
 
-		self.L_states = self.L_states[:2]
-		self.L_budgets = self.L_budgets[:1]
+		# self.L_states = self.L_states[:2]
+		# self.L_budgets = self.L_budgets[:1]
 
 		self.nb_skills = len(self.L_states)-1
 		self.states = torch.stack(self.L_states) ## tensor versions
@@ -105,10 +105,27 @@ class SkillsManager():
 		indx_start = skill_indx - self.delta_step
 		indx_goal = skill_indx
 
-		length_skill = self.budgets[indx_start.view(-1),0,:]
+		length_skill = self.budgets[indx_start.view(-1).long(),0,:]
 
 		starting_state = self.get_starting_state(indx_start)
 		goal_state = self.get_goal_state(indx_goal)
+
+		return starting_state, length_skill, goal_state
+
+	def set_skill(self, skill_indx):
+		"""
+		Get starting state, length and goal associated to a given skill
+		"""
+		assert torch.sum((skill_indx < 0).int()) == 0.
+		assert torch.sum((skill_indx > len(self.L_states)) == 0.)
+
+		self.indx_start = skill_indx - self.delta_step
+		self.indx_goal = skill_indx
+
+		length_skill = self.budgets[self.indx_start.view(-1).long(),0,:]
+
+		starting_state = self.get_starting_state(self.indx_start)
+		goal_state = self.get_goal_state(self.indx_goal)
 
 		return starting_state, length_skill, goal_state
 
@@ -215,6 +232,32 @@ class SkillsManager():
 			new_skill_indx = torch.randint(1, self.nb_skills+1, (self.num_envs, 1))
 
 		return new_skill_indx.int()
+
+	def shift_goal(self):
+		"""
+		Returns next goal state corresponding
+		"""
+		cur_indx = torch.clone(self.indx_goal)
+		next_indx = cur_indx + 1
+		next_skill_avail = (next_indx <= self.nb_skills).int()
+		next_skill_indx = torch.where(next_skill_avail == 1, next_indx, cur_indx)
+		self.indx_goal = next_skill_indx
+		next_goal_state = self.get_goal_state(self.indx_goal)
+
+		return next_goal_state, next_skill_avail
+
+	def next_goal(self):
+		"""
+		Returns next goal state corresponding
+		"""
+		cur_indx = torch.clone(self.indx_goal)
+		next_indx = cur_indx + 1
+		next_skill_avail = (next_indx <= self.nb_skills).int()
+		next_skill_indx = torch.where(next_skill_avail == 1, next_indx, cur_indx)
+		next_goal_state = self.get_goal_state(next_skill_indx)
+
+		return next_goal_state, next_skill_avail
+
 
 	def next_skill_indx(self, cur_indx):
 		"""
