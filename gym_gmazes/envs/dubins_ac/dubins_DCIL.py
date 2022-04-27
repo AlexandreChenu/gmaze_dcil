@@ -487,12 +487,12 @@ class GMazeDCILDubins(GMazeGoalDubins):
 
         return (
             {
-                'observation': self.state.detach().cpu().numpy(),
-                'achieved_goal': self.project_to_goal_space(self.state).detach().cpu().numpy(),
-                'desired_goal': self.goal.detach().cpu().numpy(),
+                'observation': self.state.detach().cpu().numpy().copy(),
+                'achieved_goal': self.project_to_goal_space(self.state).detach().cpu().numpy().copy(),
+                'desired_goal': self.goal.detach().cpu().numpy().copy(),
             },
             reward.detach().cpu().numpy(),
-            self.done.detach().cpu().numpy(),
+            self.done.detach().cpu().numpy().copy(),
             info,
         )
 
@@ -540,9 +540,9 @@ class GMazeDCILDubins(GMazeGoalDubins):
         self.goal = goal
 
         return {
-            'observation': self.state.detach().cpu().numpy(),
-            'achieved_goal': self.project_to_goal_space(self.state).detach().cpu().numpy(),
-            'desired_goal': self.goal.detach().cpu().numpy(),
+            'observation': self.state.detach().cpu().numpy().copy(),
+            'achieved_goal': self.project_to_goal_space(self.state).detach().cpu().numpy().copy(),
+            'desired_goal': self.goal.detach().cpu().numpy().copy(),
         }
 
     def shift_goal(self):
@@ -553,9 +553,9 @@ class GMazeDCILDubins(GMazeGoalDubins):
         self.goal = goal
 
         return {
-            'observation': self.state.detach().cpu().numpy(),
-            'achieved_goal': self.project_to_goal_space(self.state).detach().cpu().numpy(),
-            'desired_goal': self.goal.detach().cpu().numpy(),
+            'observation': self.state.detach().cpu().numpy().copy(),
+            'achieved_goal': self.project_to_goal_space(self.state).detach().cpu().numpy().copy(),
+            'desired_goal': self.goal.detach().cpu().numpy().copy(),
         }
 
     @torch.no_grad()
@@ -592,9 +592,9 @@ class GMazeDCILDubins(GMazeGoalDubins):
 
 
         return {
-            'observation': self.state.detach().cpu().numpy(),
-            'achieved_goal': self.project_to_goal_space(self.state).detach().cpu().numpy(),
-            'desired_goal': self.goal.detach().cpu().numpy(),
+            'observation': self.state.detach().cpu().numpy().copy(),
+            'achieved_goal': self.project_to_goal_space(self.state).detach().cpu().numpy().copy(),
+            'desired_goal': self.goal.detach().cpu().numpy().copy(),
         }
 
     @torch.no_grad()
@@ -621,9 +621,9 @@ class GMazeDCILDubins(GMazeGoalDubins):
         self.goal = goal
 
         return {
-            'observation': self.state.detach().cpu().numpy(),
-            'achieved_goal': self.project_to_goal_space(self.state).detach().cpu().numpy(),
-            'desired_goal': self.goal.detach().cpu().numpy(),
+            'observation': self.state.detach().cpu().numpy().copy(),
+            'achieved_goal': self.project_to_goal_space(self.state).detach().cpu().numpy().copy(),
+            'desired_goal': self.goal.detach().cpu().numpy().copy(),
         }
 
 
