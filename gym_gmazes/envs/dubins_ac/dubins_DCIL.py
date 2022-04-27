@@ -443,7 +443,7 @@ class GMazeDCILDubins(GMazeGoalDubins):
 
         self.do_overshoot = True
 
-        self.skill_manager = SkillsManager("/Users/chenu/Desktop/PhD/github/dcil/demos/dubinsmazeenv/demo_set5/1.demo", self) ## skill length in time-steps
+        self.skill_manager = SkillsManager("/home/chenu/git/gmaze_dcil/gym_gmazes/demos/dubins/1.demo", self) ## skill length in time-steps
         # self.skill_manager = SkillsManager("/Users/chenu/Desktop/PhD/github/dcil/demos/toy_dubinsmazeenv/1.demo", self)
 
     @torch.no_grad()
