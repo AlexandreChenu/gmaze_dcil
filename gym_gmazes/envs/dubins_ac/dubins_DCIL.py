@@ -491,7 +491,7 @@ class GMazeDCILDubins(GMazeGoalDubins):
                 'achieved_goal': self.project_to_goal_space(self.state).detach().cpu().numpy().copy(),
                 'desired_goal': self.goal.detach().cpu().numpy().copy(),
             },
-            reward.detach().cpu().numpy(),
+            reward.detach().cpu().numpy().copy(),
             self.done.detach().cpu().numpy().copy(),
             info,
         )

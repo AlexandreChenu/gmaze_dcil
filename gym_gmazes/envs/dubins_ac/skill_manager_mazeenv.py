@@ -280,7 +280,7 @@ class SkillsManager():
 		#print("is success = ", is_success)
 		#print("next_skill_avail = ", next_skill_avail)
 		## check if overshoot is possible (success + shifted skill avail)
-		overshoot_possible = torch.logical_and(is_success, next_skill_avail).int()
+		overshoot_possible = torch.logical_and(is_success, next_skill_avail).int() * 0
 
 		# print("overshoot_possible = ", overshoot_possible)
 		#
