@@ -45,7 +45,7 @@ class SkillsManager():
 		self.skill_window = 20
 		self.max_size_starting_state_set = 100
 
-		self.weighted_sampling = False
+		self.weighted_sampling = True
 
 		self.delta_step = 1
 		self.dist_threshold = 0.1
@@ -197,6 +197,9 @@ class SkillsManager():
 			if len(self.L_skills_results[i]) == 0:
 				weights_available = False
 
+		# print("self.L_skills_results = ", self.L_skills_results)
+		print("weights available = ", weights_available)
+
 		## fitness based selection
 		if self.weighted_sampling and weights_available:
 
@@ -277,31 +280,25 @@ class SkillsManager():
 		sampled_skill_indx = self.sample_skill_indx() ## return tensor of new indices
 		next_skill_indx, next_skill_avail = self.next_skill_indx(torch.clone(self.indx_goal)) ## return tensor of next skills indices
 
-		#print("is success = ", is_success)
-		#print("next_skill_avail = ", next_skill_avail)
+		# print("next_skill_avail = ", next_skill_avail)
 		## check if overshoot is possible (success + shifted skill avail)
-		overshoot_possible = torch.logical_and(is_success, next_skill_avail).int() * 0
 
 		# print("overshoot_possible = ", overshoot_possible)
 		#
 		# print("next_skill_indx = ", next_skill_indx)
 		# print("sampled_skill_indx = ", sampled_skill_indx)
+		overshoot_possible = torch.logical_and(is_success, next_skill_avail).int() * (1 - (not do_overshoot))
 
 		## if overshoot possible, choose next skill indx, otherwise, sample new skill indx
-		is_success_skill_indx = torch.where(overshoot_possible == 1, next_skill_indx, sampled_skill_indx)
-
-		# print("is_success_skill_indx = ", is_success_skill_indx)
-
-		## sample new skill indx for truncated episodes
-		new_indx_goal = torch.where(is_success == 1, is_success_skill_indx, sampled_skill_indx)
+		new_skill_indx = torch.where(overshoot_possible == 1, next_skill_indx, sampled_skill_indx)
 
 		# print("new_skill_indx = ", new_skill_indx)
 		# print("done = ", done)
-		# print("self.indx_goal = ", self.indx_goal)
+		# print("before self.indx_goal = ", self.indx_goal)
 
-		self.indx_goal = torch.where(done == 1, new_indx_goal, self.indx_goal.int())
+		self.indx_goal = torch.where(done == 1, new_skill_indx, self.indx_goal.int())
 
-		# print("self.indx_goal = ", self.indx_goal)
+		# print("after self.indx_goal = ", self.indx_goal)
 
 		## skill indx coorespond to a goal indx
 		self.indx_start = (self.indx_goal - self.delta_step)
