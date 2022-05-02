@@ -198,7 +198,7 @@ class SkillsManager():
 				weights_available = False
 
 		# print("self.L_skills_results = ", self.L_skills_results)
-		print("weights available = ", weights_available)
+		#print("weights available = ", weights_available)
 
 		## fitness based selection
 		if self.weighted_sampling and weights_available:

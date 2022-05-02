@@ -472,6 +472,8 @@ class GMazeDCILDubins(GMazeGoalDubins):
         truncation = (self.steps >= self.max_episode_steps.view(self.steps.shape)).double().reshape(
             (self.num_envs, 1))
 
+        #truncation = torch.zeros((self.num_envs, 1))
+        
         # print("truncation = ", truncation)
 
         is_success = torch.clone(reward)/1.
