@@ -473,7 +473,7 @@ class GMazeDCILDubins(GMazeGoalDubins):
             (self.num_envs, 1))
 
         #truncation = torch.zeros((self.num_envs, 1))
-        
+
         # print("truncation = ", truncation)
 
         is_success = torch.clone(reward)/1.
@@ -624,33 +624,13 @@ class GMazeDCILDubins(GMazeGoalDubins):
 
     @torch.no_grad()
     def reset(self, options=None, seed: Optional[int] = None, infos=None):
-        # print("\nreset")
 
-        # self.steps = torch.zeros(self.num_envs, dtype=torch.int).to(self.device)
-        # starting_state, length_skill, goal_state = self.skill_manager.get_skill(torch.ones(self.num_envs).long())
-        # print("starting_state = ", starting_state)
-        # print("goal_state = ", goal_state)
-        # self.state = starting_state
-        # self.goal = self.project_to_goal_space(goal_state)
-        # self.max_episode_steps = length_skill
-
-        start_state = torch.tensor(
-            np.tile(np.array([ 0.33      ,  0.5       , -0.17363015]), (self.num_envs, 1))
-        ).to(self.device)
-        self.state = start_state
+        obs = self.set_skill(1)
         zeros = torch.zeros(self.num_envs, dtype=torch.int).to(self.device)
         self.max_episode_steps = torch.ones(self.num_envs, dtype=torch.int).to(self.device)*10
         self.steps = zeros
-        goal = torch.tensor(
-            np.tile(np.array([1.78794995, 1.23542976]), (self.num_envs, 1))
-        ).to(self.device)
-        self.goal = goal
 
-        return {
-            'observation': self.state.detach().cpu().numpy().copy(),
-            'achieved_goal': self.project_to_goal_space(self.state).detach().cpu().numpy().copy(),
-            'desired_goal': self.goal.detach().cpu().numpy().copy(),
-        }
+        return obs
 
 
 if (__name__=='__main__'):
