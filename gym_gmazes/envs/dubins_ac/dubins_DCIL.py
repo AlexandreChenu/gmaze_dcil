@@ -86,7 +86,7 @@ class GMazeCommon(Maze):
         utils.EzPickle.__init__(**locals())
         self.reward_function = None
         self.delta_t = 0.2
-        self.frame_skip = 1
+        self.frame_skip = 2
         self.lines = None
 
         self.thick = args['wallthickness']
@@ -140,7 +140,7 @@ class GMazeCommon(Maze):
             reward_function  # the reward function is not defined by the environment
         )
 
-    def set_frame_skip(self, frame_skip: int = 1):
+    def set_frame_skip(self, frame_skip: int = 2):
         self.frame_skip = (
             frame_skip  # a call to step() repeats the action frame_skip times
         )
@@ -444,7 +444,7 @@ class GMazeDCILDubins(GMazeGoalDubins):
 
         self.truncation = None
 
-        self.do_overshoot = True
+        self.do_overshoot = False
 
         self.skill_manager = SkillsManager("/Users/chenu/Desktop/PhD/github/dcil/demos/dubinsmazeenv/demo_set5/1.demo", self) ## skill length in time-steps
         # self.skill_manager = SkillsManager("/Users/chenu/Desktop/PhD/github/dcil/demos/toy_dubinsmazeenv/1.demo", self)
@@ -613,8 +613,6 @@ class GMazeDCILDubins(GMazeGoalDubins):
         # print("goal = ", goal)
         self.goal = torch.where(self.done == 1, goal, self.goal).to(self.device)
         # print("after self.goal = ", self.goal)
-
-
 
         return {
             'observation': self.state.detach().cpu().numpy().copy(),
