@@ -45,7 +45,7 @@ class SkillsManager():
 		self.skill_window = 20
 		self.max_size_starting_state_set = 100
 
-		self.weighted_sampling = True
+		self.weighted_sampling = False
 
 		self.delta_step = 1
 		self.dist_threshold = 0.1
@@ -198,7 +198,7 @@ class SkillsManager():
 				weights_available = False
 
 		# print("self.L_skills_results = ", self.L_skills_results)
-		print("weights available = ", weights_available)
+		#print("weights available = ", weights_available)
 
 		## fitness based selection
 		if self.weighted_sampling and weights_available:
@@ -282,6 +282,11 @@ class SkillsManager():
 
 		# print("next_skill_avail = ", next_skill_avail)
 		## check if overshoot is possible (success + shifted skill avail)
+
+		# print("overshoot_possible = ", overshoot_possible)
+		#
+		# print("next_skill_indx = ", next_skill_indx)
+		# print("sampled_skill_indx = ", sampled_skill_indx)
 		overshoot_possible = torch.logical_and(is_success, next_skill_avail).int() * (1 - (not do_overshoot))
 
 		## if overshoot possible, choose next skill indx, otherwise, sample new skill indx

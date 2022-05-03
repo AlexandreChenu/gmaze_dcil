@@ -446,7 +446,7 @@ class GMazeDCILDubins(GMazeGoalDubins):
 
         self.do_overshoot = False
 
-        self.skill_manager = SkillsManager("/Users/chenu/Desktop/PhD/github/dcil/demos/dubinsmazeenv/demo_set5/1.demo", self) ## skill length in time-steps
+        self.skill_manager = SkillsManager("/gpfswork/rech/kcr/ubj56je/git/gmaze_dcil/gym_gmazes/demos/dubins/1.demo", self) ## skill length in time-steps
         # self.skill_manager = SkillsManager("/Users/chenu/Desktop/PhD/github/dcil/demos/toy_dubinsmazeenv/1.demo", self)
 
     @torch.no_grad()
@@ -472,6 +472,8 @@ class GMazeDCILDubins(GMazeGoalDubins):
         truncation = (self.steps >= self.max_episode_steps.view(self.steps.shape)).double().reshape(
             (self.num_envs, 1))
 
+        #truncation = torch.zeros((self.num_envs, 1))
+        
         # print("truncation = ", truncation)
 
         is_success = torch.clone(reward)/1.
@@ -637,7 +639,7 @@ class GMazeDCILDubins(GMazeGoalDubins):
         ).to(self.device)
         self.state = start_state
         zeros = torch.zeros(self.num_envs, dtype=torch.int).to(self.device)
-        self.max_episode_steps = torch.ones(self.num_envs, dtype=torch.int).to(self.device)*30
+        self.max_episode_steps = torch.ones(self.num_envs, dtype=torch.int).to(self.device)*10
         self.steps = zeros
         goal = torch.tensor(
             np.tile(np.array([1.78794995, 1.23542976]), (self.num_envs, 1))
