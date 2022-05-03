@@ -45,7 +45,7 @@ class SkillsManager():
 		self.skill_window = 20
 		self.max_size_starting_state_set = 100
 
-		self.weighted_sampling = True
+		self.weighted_sampling = False
 
 		self.delta_step = 1
 		self.dist_threshold = 0.1

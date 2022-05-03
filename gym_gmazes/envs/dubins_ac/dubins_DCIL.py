@@ -86,7 +86,7 @@ class GMazeCommon(Maze):
         utils.EzPickle.__init__(**locals())
         self.reward_function = None
         self.delta_t = 0.2
-        self.frame_skip = 1
+        self.frame_skip = 2
         self.lines = None
 
         self.thick = args['wallthickness']
@@ -446,7 +446,7 @@ class GMazeDCILDubins(GMazeGoalDubins):
 
         self.do_overshoot = True
 
-        self.skill_manager = SkillsManager("/home/chenu/git/gmaze_dcil/gym_gmazes/demos/dubins/1.demo", self) ## skill length in time-steps
+        self.skill_manager = SkillsManager("/gpfswork/rech/kcr/ubj56je/git/gmaze_dcil/gym_gmazes/demos/dubins/1.demo", self) ## skill length in time-steps
         # self.skill_manager = SkillsManager("/Users/chenu/Desktop/PhD/github/dcil/demos/toy_dubinsmazeenv/1.demo", self)
 
     @torch.no_grad()
@@ -641,7 +641,7 @@ class GMazeDCILDubins(GMazeGoalDubins):
         ).to(self.device)
         self.state = start_state
         zeros = torch.zeros(self.num_envs, dtype=torch.int).to(self.device)
-        self.max_episode_steps = torch.ones(self.num_envs, dtype=torch.int).to(self.device)*30
+        self.max_episode_steps = torch.ones(self.num_envs, dtype=torch.int).to(self.device)*10
         self.steps = zeros
         goal = torch.tensor(
             np.tile(np.array([1.78794995, 1.23542976]), (self.num_envs, 1))
