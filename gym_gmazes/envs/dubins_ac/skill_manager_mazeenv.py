@@ -50,6 +50,8 @@ class SkillsManager():
 		self.delta_step = 1
 		self.dist_threshold = 0.1
 
+		print("len(self.L_states) = ", len(self.L_states))
+
 	def extract_from_demo(self, demo_path, verbose=1):
 		"""
 		Extract demo from path
@@ -280,13 +282,6 @@ class SkillsManager():
 		sampled_skill_indx = self.sample_skill_indx() ## return tensor of new indices
 		next_skill_indx, next_skill_avail = self.next_skill_indx(torch.clone(self.indx_goal)) ## return tensor of next skills indices
 
-		# print("next_skill_avail = ", next_skill_avail)
-		## check if overshoot is possible (success + shifted skill avail)
-
-		# print("overshoot_possible = ", overshoot_possible)
-		#
-		# print("next_skill_indx = ", next_skill_indx)
-		# print("sampled_skill_indx = ", sampled_skill_indx)
 		overshoot_possible = torch.logical_and(is_success, next_skill_avail).int() * (1 - (not do_overshoot))
 
 		## if overshoot possible, choose next skill indx, otherwise, sample new skill indx

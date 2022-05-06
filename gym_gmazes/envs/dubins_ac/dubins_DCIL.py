@@ -432,7 +432,7 @@ class GMazeGoalDubins(GMazeCommon, GoalEnv, utils.EzPickle, ABC):
 
 
 class GMazeDCILDubins(GMazeGoalDubins):
-    def __init__(self, device: str = 'cpu', num_envs: int = 1):
+    def __init__(self, demo_path, device: str = 'cpu', num_envs: int = 1):
         super().__init__(device, num_envs)
 
         self.done = torch.ones((self.num_envs, 1)).int().to(self.device)
@@ -446,7 +446,8 @@ class GMazeDCILDubins(GMazeGoalDubins):
 
         self.do_overshoot = False
 
-        self.skill_manager = SkillsManager("/gpfswork/rech/kcr/ubj56je/git/gmaze_dcil/gym_gmazes/demos/dubins/1.demo", self) ## skill length in time-steps
+        self.demo_path = demo_path
+        self.skill_manager = SkillsManager(self.demo_path, self) ## skill length in time-steps
         # self.skill_manager = SkillsManager("/Users/chenu/Desktop/PhD/github/dcil/demos/toy_dubinsmazeenv/1.demo", self)
 
     @torch.no_grad()
@@ -575,12 +576,6 @@ class GMazeDCILDubins(GMazeGoalDubins):
         # print("\n reset_done")
         start_state, length_skill, goal_state, b_overshoot_possible = self._select_skill()
         goal = self.project_to_goal_space(goal_state)
-        # b_change_state = torch.logical_and(self.done, 1 - b_overshoot_possible).int()
-        # self.state = torch.where(b_change_state == 1, starting_state, self.state).to(self.device)
-        # zeros = torch.zeros(self.num_envs, dtype=torch.int).to(self.device)
-        # self.steps = torch.where(self.done.flatten() == 1, zeros, self.steps)
-        # self.max_episode_steps = torch.where(self.done == 1, length_skill, self.max_episode_steps)
-        # self.goal = torch.where(self.done == 1, goal, self.goal).to(self.device)
 
         ## update successes and failures
         for indx_env in range(self.num_envs):
@@ -590,31 +585,16 @@ class GMazeDCILDubins(GMazeGoalDubins):
                 else:
                     self.skill_manager.add_failure(self.skill_manager.indx_goal[indx_env])
 
-        # print("self.done = ", self.done)
-        # print("b_overshoot_possible = ", b_overshoot_possible)
-
-        # start_state = torch.tensor(
-        #     np.tile(np.array([ 0.33      ,  0.5       , -0.17363015]), (self.num_envs, 1))
-        # ).to(self.device)
         b_change_state = torch.logical_and(self.done, torch.logical_not(b_overshoot_possible)).int()
-        # print("b_change_state = ", b_change_state)
 
-        # print("self.state = ", self.state)
-        # print("start_state = ", start_state)
         self.state = torch.where(b_change_state == 1, start_state, self.state)
-        # print("new self.state = ", self.state)
         # self.state = torch.where(self.done == 1, start_state, self.state)
         zeros = torch.zeros(self.num_envs, dtype=torch.int).to(self.device)
-        # print("before self.steps = ", self.steps)
         self.steps = torch.where(self.done.flatten() == 1, zeros, self.steps)
-        # print("after self.steps = ", self.steps)
 
         # self.max_episode_steps = torch.where(self.done == 1, length_skill, self.max_episode_steps)
 
-        # print("before self.goal = ", self.goal)
-        # print("goal = ", goal)
         self.goal = torch.where(self.done == 1, goal, self.goal).to(self.device)
-        # print("after self.goal = ", self.goal)
 
         return {
             'observation': self.state.detach().cpu().numpy().copy(),
@@ -625,7 +605,8 @@ class GMazeDCILDubins(GMazeGoalDubins):
     @torch.no_grad()
     def reset(self, options=None, seed: Optional[int] = None, infos=None):
 
-        obs = self.set_skill(1)
+        skill_indx = torch.ones((self.num_envs,))
+        obs = self.set_skill(skill_indx)
         zeros = torch.zeros(self.num_envs, dtype=torch.int).to(self.device)
         self.max_episode_steps = torch.ones(self.num_envs, dtype=torch.int).to(self.device)*10
         self.steps = zeros
