@@ -444,7 +444,7 @@ class GMazeDCILDubins(GMazeGoalDubins):
 
         self.truncation = None
 
-        self.do_overshoot = False
+        self.do_overshoot = True
 
         self.demo_path = demo_path
         self.skill_manager = SkillsManager(self.demo_path, self) ## skill length in time-steps
