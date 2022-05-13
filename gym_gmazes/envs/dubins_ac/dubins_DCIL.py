@@ -460,9 +460,11 @@ class GMazeGoalDubins(GMazeCommon, GoalEnv, utils.EzPickle, ABC):
 
 		intersection = self.valid_step(self.state, new_state)
 
-		self.state = self.state * intersection + new_state * torch.logical_not(
-			intersection
-		)
+		# self.state = self.state * intersection + new_state * torch.logical_not(
+		# 	intersection
+		# )
+
+		self.state = torch.where(intersection=0, new_state, self.state)
 
 		reward = self.compute_reward(self.project_to_goal_space(self.state), self.goal, {}).reshape(
 			(self.num_envs, 1))
