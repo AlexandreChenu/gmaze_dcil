@@ -223,12 +223,10 @@ class GMazeDubins(GMazeCommon, gym.Env, utils.EzPickle, ABC):
 		new_state = torch.clone(self.state)
 		for i in range(self.frame_skip):
 			new_state = self.update_state(new_state, action, self.delta_t)
-
-		intersection = self.valid_step(self.state, new_state)
-
-		self.state = self.state * intersection + new_state * torch.logical_not(
-			intersection
-		)
+			intersection = self.valid_step(self.state, new_state)
+			self.state = self.state * intersection + new_state * torch.logical_not(
+				intersection
+			)
 
 		observation = self.state
 		reward = self.reward_function(action, observation).reshape(
@@ -294,7 +292,7 @@ def default_compute_reward(
 		# if torch.is_tensor(achieved_goal):
 		#     return (d < distance_threshold).double()
 		# else:
-		return 1.0 * (d < distance_threshold)
+		return 1.0 * (d <= distance_threshold)
 	else:
 		return -d
 
@@ -303,7 +301,7 @@ def default_compute_reward(
 def default_success_function(achieved_goal: torch.Tensor, desired_goal: torch.Tensor):
 	distance_threshold = 0.1
 	d = goal_distance(achieved_goal, desired_goal)
-	return 1.0 * (d < distance_threshold)
+	return 1.0 * (d <= distance_threshold)
 
 
 class GMazeGoalDubins(GMazeCommon, GoalEnv, utils.EzPickle, ABC):
@@ -458,13 +456,13 @@ class GMazeGoalDubins(GMazeCommon, GoalEnv, utils.EzPickle, ABC):
 		for i in range(self.frame_skip):
 			new_state = self.update_state(new_state, action, self.delta_t)
 
-		intersection = self.valid_step(self.state, new_state)
+			intersection = self.valid_step(self.state, new_state)
 
-		# self.state = self.state * intersection + new_state * torch.logical_not(
-		# 	intersection
-		# )
+			# self.state = self.state * intersection + new_state * torch.logical_not(
+			# 	intersection
+			# )
 
-		self.state = torch.where(intersection==0, new_state, self.state)
+			self.state = torch.where(intersection==0, new_state, self.state)
 
 		reward = self.compute_reward(self.project_to_goal_space(self.state), self.goal, {}).reshape(
 			(self.num_envs, 1))
@@ -490,270 +488,270 @@ class GMazeGoalDubins(GMazeCommon, GoalEnv, utils.EzPickle, ABC):
 		)
 
 
-class GMazeDCILDubins(GMazeGoalDubins):
-	def __init__(self, demo_path, device: str = 'cpu', num_envs: int = 1):
-		super().__init__(device, num_envs)
-
-		self.done = torch.ones((self.num_envs, 1)).int().to(self.device)
-
-		## fake init as each variable is modified after first reset
-		self.steps = torch.zeros(self.num_envs, dtype=torch.int).to(self.device)
-		self.is_success = torch.zeros((self.num_envs, 1)).int().to(self.device)
-		self.goal = self.project_to_goal_space(torch.clone(self.state)).to(self.device)
-
-		self.truncation = None
-
-		self.do_overshoot = True
-
-		self.demo_path = demo_path
-		self.skill_manager = SkillsManager(self.demo_path, self) ## skill length in time-steps
-		# self.skill_manager = SkillsManager("/Users/chenu/Desktop/PhD/github/dcil/demos/toy_dubinsmazeenv/1.demo", self)
-
-	@torch.no_grad()
-	def step(self,action: np.ndarray):
-		action = torch.tensor(action).to(self.device)
-
-		new_state = torch.clone(self.state)
-		for i in range(self.frame_skip):
-			new_state = self.update_state(new_state, action, self.delta_t)
-
-		intersection = self.valid_step(self.state, new_state)
-
-		self.state = self.state * intersection + new_state * torch.logical_not(
-			intersection
-		)
-
-		reward = self.compute_reward(self.project_to_goal_space(self.state), self.goal, {}).reshape(
-			(self.num_envs, 1))
-		self.steps += 1
-
-		# print("self.steps = ", self.steps)
-		# print("self.max_episode_steps = ", self.max_episode_steps)
-		truncation = (self.steps >= self.max_episode_steps.view(self.steps.shape)).double().reshape(
-			(self.num_envs, 1))
-
-		#truncation = torch.zeros((self.num_envs, 1))
-
-		# print("truncation = ", truncation)
-
-		is_success = torch.clone(reward)/1.
-		self.is_success = torch.clone(is_success)
-
-		# print("self.is_success = ", self.is_success)
-
-		truncation = truncation * (1 - is_success)
-		info = {'is_success': torch.clone(is_success).detach().cpu().numpy(),
-				'truncation': torch.clone(truncation).detach().cpu().numpy()}
-		self.done = torch.maximum(truncation, is_success)
-
-		## get next goal and next goal availability boolean
-		next_goal_state, info['next_goal_avail'] = self.skill_manager.next_goal()
-		info['next_goal'] = self.project_to_goal_space(next_goal_state)
-
-		return (
-			{
-				'observation': self.state.detach().cpu().numpy().copy(),
-				'achieved_goal': self.project_to_goal_space(self.state).detach().cpu().numpy().copy(),
-				'desired_goal': self.goal.detach().cpu().numpy().copy(),
-			},
-			reward.detach().cpu().numpy().copy(),
-			self.done.detach().cpu().numpy().copy(),
-			info,
-		)
-
-
-	# @torch.no_grad()
-	# def reset_model(self):
-	#     # reset state to initial value
-	#     self.state = self.init_qpos
-
-	# @torch.no_grad()
-	# def reset(self, options=None, seed: Optional[int] = None, infos=None):
-	#     self.reset_model()  # reset state to initial value
-	#     self.goal = self._sample_goal()  # sample goal
-	#     self.steps = torch.zeros(self.num_envs, dtype=torch.int).to(self.device)
-	#     return {
-	#         'observation': self.state.detach().cpu().numpy(),
-	#         'achieved_goal': self.project_to_goal_space(self.state).detach().cpu().numpy(),
-	#         'desired_goal': self.goal.detach().cpu().numpy(),
-	#     }
-
-	## TODO:
-	## - check if overshoot available
-	## - adapt reset w/ or w/o overshoot
-	## - goal sampling
-
-	# @torch.no_grad()
-	# def reset_done(self, options=None, seed: Optional[int] = None, infos=None):
-	#     self.state = torch.where(self.done == 1, self.init_qpos, self.state)
-	#     zeros = torch.zeros(self.num_envs, dtype=torch.int).to(self.device)
-	#     self.steps = torch.where(self.done.flatten() == 1, zeros, self.steps)
-	#     newgoal = self._sample_goal()
-	#     self.goal = torch.where(self.done == 1, newgoal, self.goal)
-	#     return {
-	#         'observation': self.state.detach().cpu().numpy(),
-	#         'achieved_goal': self.project_to_goal_space(self.state).detach().cpu().numpy(),
-	#         'desired_goal': self.goal.detach().cpu().numpy(),
-	#     }
-
-	def set_skill(self, skill_indx):
-		start_state, length_skill, goal_state = self.skill_manager.set_skill(skill_indx)
-		goal = self.project_to_goal_space(goal_state)
-		self.state = start_state
-		zeros = torch.zeros(self.num_envs, dtype=torch.int).to(self.device)
-		self.steps = zeros
-		self.goal = goal
-
-		return {
-			'observation': self.state.detach().cpu().numpy().copy(),
-			'achieved_goal': self.project_to_goal_space(self.state).detach().cpu().numpy().copy(),
-			'desired_goal': self.goal.detach().cpu().numpy().copy(),
-		}
-
-	def shift_goal(self):
-		goal_state, _ = self.skill_manager.shift_goal()
-		goal = self.project_to_goal_space(goal_state)
-		zeros = torch.zeros(self.num_envs, dtype=torch.int).to(self.device)
-		self.steps = zeros
-		self.goal = goal
-
-		return {
-			'observation': self.state.detach().cpu().numpy().copy(),
-			'achieved_goal': self.project_to_goal_space(self.state).detach().cpu().numpy().copy(),
-			'desired_goal': self.goal.detach().cpu().numpy().copy(),
-		}
-
-	@torch.no_grad()
-	def _select_skill(self):
-		## done indicates indx to change
-		## overshoot indicates indx to shift by one
-		## is success indicates if we should overshoot
-		return self.skill_manager._select_skill(torch.clone(self.done.int()), torch.clone(self.is_success.int()), do_overshoot = self.do_overshoot)
-
-	@torch.no_grad()
-	def reset_done(self, options=None, seed: Optional[int] = None, infos=None):
-		# print("\n reset_done")
-		start_state, length_skill, goal_state, b_overshoot_possible = self._select_skill()
-		goal = self.project_to_goal_space(goal_state)
-
-		## update successes and failures
-		for indx_env in range(self.num_envs):
-			if self.done[indx_env] == 1:
-				if self.is_success[indx_env] == 1:
-					self.skill_manager.add_success(self.skill_manager.indx_goal[indx_env])
-				else:
-					self.skill_manager.add_failure(self.skill_manager.indx_goal[indx_env])
-
-		b_change_state = torch.logical_and(self.done, torch.logical_not(b_overshoot_possible)).int()
-
-		self.state = torch.where(b_change_state == 1, start_state, self.state)
-		# self.state = torch.where(self.done == 1, start_state, self.state)
-		zeros = torch.zeros(self.num_envs, dtype=torch.int).to(self.device)
-		self.steps = torch.where(self.done.flatten() == 1, zeros, self.steps)
-
-		# self.max_episode_steps = torch.where(self.done == 1, length_skill, self.max_episode_steps)
-
-		self.goal = torch.where(self.done == 1, goal, self.goal).to(self.device)
-
-		return {
-			'observation': self.state.detach().cpu().numpy().copy(),
-			'achieved_goal': self.project_to_goal_space(self.state).detach().cpu().numpy().copy(),
-			'desired_goal': self.goal.detach().cpu().numpy().copy(),
-		}
-
-	@torch.no_grad()
-	def reset(self, options=None, seed: Optional[int] = None, infos=None):
-
-		skill_indx = torch.ones((self.num_envs,))
-		obs = self.set_skill(skill_indx)
-		zeros = torch.zeros(self.num_envs, dtype=torch.int).to(self.device)
-		self.max_episode_steps = torch.ones(self.num_envs, dtype=torch.int).to(self.device)*10
-		self.steps = zeros
-
-		return obs
-
-
-if (__name__=='__main__'):
-
-	## Test GMazeCommon
-
-	# env = GMazeCommon(device="cpu", num_envs=2)
-	#
-	# state = env.state
-	# new_state = torch.tensor([[0.6000, 0.6000, 0.0000],
-	#                           [-0.1000, 0.1000, 0.0000]])
-	#
-	# env.valid_step(state, new_state)
-
-	## Test GMazeGoalDubins
-
-	# traj = []
-	#
-	# env = GMazeGoalDubins(device="cpu", num_envs=6)
-	# print("state = ", env.state)
-	#
-	# env.reset()
-	#
-	# for i in range(70):
-	#     traj.append(env.state)
-	#     action = env.action_space.sample()
-	#     state, reward, done, info = env.step(action)
-	#     # print("state = ", state)
-	#     print("env.steps = ", env.steps)
-	#
-	# env.reset()
-	# print("env.steps = ", env.steps)
-	#
-	# fig, ax = plt.subplots()
-	# env.plot(ax)
-	# for i in range(traj[0].shape[0]):
-	#     X = [state[i][0] for state in traj]
-	#     Y = [state[i][1] for state in traj]
-	#     ax.plot(X,Y)
-	#
-	# plt.show()
-
-	traj = []
-
-	env = GMazeDCILDubins(device="cpu", num_envs=6)
-	# print("state = ", env.state)
-
-	print("states = ", env.skill_manager.states)
-
-	state = env.reset()
-	# print("state (after reset) = ", state)
-
-	for i in range(300):
-		traj.append(env.state)
-		action = env.action_space.sample()
-		state, reward, done, info = env.step(action)
-
-		env.reset()
-		# print("state = ", state)
-		# print("env.steps = ", env.steps)
-
-	env.reset()
-	# print("env.steps = ", env.steps)
-
-	fig, ax = plt.subplots()
-	env.plot(ax)
-	for i in range(traj[0].shape[0]):
-		X = [state[i][0] for state in traj]
-		Y = [state[i][1] for state in traj]
-		Theta = [state[i][2] for state in traj]
-		ax.scatter(X,Y, marker=".")
-
-		for x, y, t in zip(X,Y,Theta):
-			dx = np.cos(t)
-			dy = np.sin(t)
-			arrow = plt.arrow(x,y,dx*0.1,dy*0.1,alpha = 0.6,width = 0.01, zorder=6)
-
-	circles = []
-	for state in env.skill_manager.L_states:
-		circle = plt.Circle((state[0][0], state[0][1]), 0.1, color='m', alpha = 0.6)
-		circles.append(circle)
-		# ax.add_patch(circle)
-	coll = mc.PatchCollection(circles, color="plum", zorder = 4)
-	ax.add_collection(coll)
-
-	plt.show()
+# class GMazeDCILDubins(GMazeGoalDubins):
+# 	def __init__(self, demo_path, device: str = 'cpu', num_envs: int = 1):
+# 		super().__init__(device, num_envs)
+#
+# 		self.done = torch.ones((self.num_envs, 1)).int().to(self.device)
+#
+# 		## fake init as each variable is modified after first reset
+# 		self.steps = torch.zeros(self.num_envs, dtype=torch.int).to(self.device)
+# 		self.is_success = torch.zeros((self.num_envs, 1)).int().to(self.device)
+# 		self.goal = self.project_to_goal_space(torch.clone(self.state)).to(self.device)
+#
+# 		self.truncation = None
+#
+# 		self.do_overshoot = True
+#
+# 		self.demo_path = demo_path
+# 		self.skill_manager = SkillsManager(self.demo_path, self) ## skill length in time-steps
+# 		# self.skill_manager = SkillsManager("/Users/chenu/Desktop/PhD/github/dcil/demos/toy_dubinsmazeenv/1.demo", self)
+#
+# 	@torch.no_grad()
+# 	def step(self,action: np.ndarray):
+# 		action = torch.tensor(action).to(self.device)
+#
+# 		new_state = torch.clone(self.state)
+# 		for i in range(self.frame_skip):
+# 			new_state = self.update_state(new_state, action, self.delta_t)
+#
+# 		intersection = self.valid_step(self.state, new_state)
+#
+# 		self.state = self.state * intersection + new_state * torch.logical_not(
+# 			intersection
+# 		)
+#
+# 		reward = self.compute_reward(self.project_to_goal_space(self.state), self.goal, {}).reshape(
+# 			(self.num_envs, 1))
+# 		self.steps += 1
+#
+# 		# print("self.steps = ", self.steps)
+# 		# print("self.max_episode_steps = ", self.max_episode_steps)
+# 		truncation = (self.steps >= self.max_episode_steps.view(self.steps.shape)).double().reshape(
+# 			(self.num_envs, 1))
+#
+# 		#truncation = torch.zeros((self.num_envs, 1))
+#
+# 		# print("truncation = ", truncation)
+#
+# 		is_success = torch.clone(reward)/1.
+# 		self.is_success = torch.clone(is_success)
+#
+# 		# print("self.is_success = ", self.is_success)
+#
+# 		truncation = truncation * (1 - is_success)
+# 		info = {'is_success': torch.clone(is_success).detach().cpu().numpy(),
+# 				'truncation': torch.clone(truncation).detach().cpu().numpy()}
+# 		self.done = torch.maximum(truncation, is_success)
+#
+# 		## get next goal and next goal availability boolean
+# 		next_goal_state, info['next_goal_avail'] = self.skill_manager.next_goal()
+# 		info['next_goal'] = self.project_to_goal_space(next_goal_state)
+#
+# 		return (
+# 			{
+# 				'observation': self.state.detach().cpu().numpy().copy(),
+# 				'achieved_goal': self.project_to_goal_space(self.state).detach().cpu().numpy().copy(),
+# 				'desired_goal': self.goal.detach().cpu().numpy().copy(),
+# 			},
+# 			reward.detach().cpu().numpy().copy(),
+# 			self.done.detach().cpu().numpy().copy(),
+# 			info,
+# 		)
+#
+#
+# 	# @torch.no_grad()
+# 	# def reset_model(self):
+# 	#     # reset state to initial value
+# 	#     self.state = self.init_qpos
+#
+# 	# @torch.no_grad()
+# 	# def reset(self, options=None, seed: Optional[int] = None, infos=None):
+# 	#     self.reset_model()  # reset state to initial value
+# 	#     self.goal = self._sample_goal()  # sample goal
+# 	#     self.steps = torch.zeros(self.num_envs, dtype=torch.int).to(self.device)
+# 	#     return {
+# 	#         'observation': self.state.detach().cpu().numpy(),
+# 	#         'achieved_goal': self.project_to_goal_space(self.state).detach().cpu().numpy(),
+# 	#         'desired_goal': self.goal.detach().cpu().numpy(),
+# 	#     }
+#
+# 	## TODO:
+# 	## - check if overshoot available
+# 	## - adapt reset w/ or w/o overshoot
+# 	## - goal sampling
+#
+# 	# @torch.no_grad()
+# 	# def reset_done(self, options=None, seed: Optional[int] = None, infos=None):
+# 	#     self.state = torch.where(self.done == 1, self.init_qpos, self.state)
+# 	#     zeros = torch.zeros(self.num_envs, dtype=torch.int).to(self.device)
+# 	#     self.steps = torch.where(self.done.flatten() == 1, zeros, self.steps)
+# 	#     newgoal = self._sample_goal()
+# 	#     self.goal = torch.where(self.done == 1, newgoal, self.goal)
+# 	#     return {
+# 	#         'observation': self.state.detach().cpu().numpy(),
+# 	#         'achieved_goal': self.project_to_goal_space(self.state).detach().cpu().numpy(),
+# 	#         'desired_goal': self.goal.detach().cpu().numpy(),
+# 	#     }
+#
+# 	def set_skill(self, skill_indx):
+# 		start_state, length_skill, goal_state = self.skill_manager.set_skill(skill_indx)
+# 		goal = self.project_to_goal_space(goal_state)
+# 		self.state = start_state
+# 		zeros = torch.zeros(self.num_envs, dtype=torch.int).to(self.device)
+# 		self.steps = zeros
+# 		self.goal = goal
+#
+# 		return {
+# 			'observation': self.state.detach().cpu().numpy().copy(),
+# 			'achieved_goal': self.project_to_goal_space(self.state).detach().cpu().numpy().copy(),
+# 			'desired_goal': self.goal.detach().cpu().numpy().copy(),
+# 		}
+#
+# 	def shift_goal(self):
+# 		goal_state, _ = self.skill_manager.shift_goal()
+# 		goal = self.project_to_goal_space(goal_state)
+# 		zeros = torch.zeros(self.num_envs, dtype=torch.int).to(self.device)
+# 		self.steps = zeros
+# 		self.goal = goal
+#
+# 		return {
+# 			'observation': self.state.detach().cpu().numpy().copy(),
+# 			'achieved_goal': self.project_to_goal_space(self.state).detach().cpu().numpy().copy(),
+# 			'desired_goal': self.goal.detach().cpu().numpy().copy(),
+# 		}
+#
+# 	@torch.no_grad()
+# 	def _select_skill(self):
+# 		## done indicates indx to change
+# 		## overshoot indicates indx to shift by one
+# 		## is success indicates if we should overshoot
+# 		return self.skill_manager._select_skill(torch.clone(self.done.int()), torch.clone(self.is_success.int()), do_overshoot = self.do_overshoot)
+#
+# 	@torch.no_grad()
+# 	def reset_done(self, options=None, seed: Optional[int] = None, infos=None):
+# 		# print("\n reset_done")
+# 		start_state, length_skill, goal_state, b_overshoot_possible = self._select_skill()
+# 		goal = self.project_to_goal_space(goal_state)
+#
+# 		## update successes and failures
+# 		for indx_env in range(self.num_envs):
+# 			if self.done[indx_env] == 1:
+# 				if self.is_success[indx_env] == 1:
+# 					self.skill_manager.add_success(self.skill_manager.indx_goal[indx_env])
+# 				else:
+# 					self.skill_manager.add_failure(self.skill_manager.indx_goal[indx_env])
+#
+# 		b_change_state = torch.logical_and(self.done, torch.logical_not(b_overshoot_possible)).int()
+#
+# 		self.state = torch.where(b_change_state == 1, start_state, self.state)
+# 		# self.state = torch.where(self.done == 1, start_state, self.state)
+# 		zeros = torch.zeros(self.num_envs, dtype=torch.int).to(self.device)
+# 		self.steps = torch.where(self.done.flatten() == 1, zeros, self.steps)
+#
+# 		# self.max_episode_steps = torch.where(self.done == 1, length_skill, self.max_episode_steps)
+#
+# 		self.goal = torch.where(self.done == 1, goal, self.goal).to(self.device)
+#
+# 		return {
+# 			'observation': self.state.detach().cpu().numpy().copy(),
+# 			'achieved_goal': self.project_to_goal_space(self.state).detach().cpu().numpy().copy(),
+# 			'desired_goal': self.goal.detach().cpu().numpy().copy(),
+# 		}
+#
+# 	@torch.no_grad()
+# 	def reset(self, options=None, seed: Optional[int] = None, infos=None):
+#
+# 		skill_indx = torch.ones((self.num_envs,))
+# 		obs = self.set_skill(skill_indx)
+# 		zeros = torch.zeros(self.num_envs, dtype=torch.int).to(self.device)
+# 		self.max_episode_steps = torch.ones(self.num_envs, dtype=torch.int).to(self.device)*10
+# 		self.steps = zeros
+#
+# 		return obs
+#
+#
+# if (__name__=='__main__'):
+#
+# 	## Test GMazeCommon
+#
+# 	# env = GMazeCommon(device="cpu", num_envs=2)
+# 	#
+# 	# state = env.state
+# 	# new_state = torch.tensor([[0.6000, 0.6000, 0.0000],
+# 	#                           [-0.1000, 0.1000, 0.0000]])
+# 	#
+# 	# env.valid_step(state, new_state)
+#
+# 	## Test GMazeGoalDubins
+#
+# 	# traj = []
+# 	#
+# 	# env = GMazeGoalDubins(device="cpu", num_envs=6)
+# 	# print("state = ", env.state)
+# 	#
+# 	# env.reset()
+# 	#
+# 	# for i in range(70):
+# 	#     traj.append(env.state)
+# 	#     action = env.action_space.sample()
+# 	#     state, reward, done, info = env.step(action)
+# 	#     # print("state = ", state)
+# 	#     print("env.steps = ", env.steps)
+# 	#
+# 	# env.reset()
+# 	# print("env.steps = ", env.steps)
+# 	#
+# 	# fig, ax = plt.subplots()
+# 	# env.plot(ax)
+# 	# for i in range(traj[0].shape[0]):
+# 	#     X = [state[i][0] for state in traj]
+# 	#     Y = [state[i][1] for state in traj]
+# 	#     ax.plot(X,Y)
+# 	#
+# 	# plt.show()
+#
+# 	traj = []
+#
+# 	env = GMazeDCILDubins(device="cpu", num_envs=6)
+# 	# print("state = ", env.state)
+#
+# 	print("states = ", env.skill_manager.states)
+#
+# 	state = env.reset()
+# 	# print("state (after reset) = ", state)
+#
+# 	for i in range(300):
+# 		traj.append(env.state)
+# 		action = env.action_space.sample()
+# 		state, reward, done, info = env.step(action)
+#
+# 		env.reset()
+# 		# print("state = ", state)
+# 		# print("env.steps = ", env.steps)
+#
+# 	env.reset()
+# 	# print("env.steps = ", env.steps)
+#
+# 	fig, ax = plt.subplots()
+# 	env.plot(ax)
+# 	for i in range(traj[0].shape[0]):
+# 		X = [state[i][0] for state in traj]
+# 		Y = [state[i][1] for state in traj]
+# 		Theta = [state[i][2] for state in traj]
+# 		ax.scatter(X,Y, marker=".")
+#
+# 		for x, y, t in zip(X,Y,Theta):
+# 			dx = np.cos(t)
+# 			dy = np.sin(t)
+# 			arrow = plt.arrow(x,y,dx*0.1,dy*0.1,alpha = 0.6,width = 0.01, zorder=6)
+#
+# 	circles = []
+# 	for state in env.skill_manager.L_states:
+# 		circle = plt.Circle((state[0][0], state[0][1]), 0.1, color='m', alpha = 0.6)
+# 		circles.append(circle)
+# 		# ax.add_patch(circle)
+# 	coll = mc.PatchCollection(circles, color="plum", zorder = 4)
+# 	ax.add_collection(coll)
+#
+# 	plt.show()
