@@ -437,7 +437,7 @@ class GMazeGoalDubins(GMazeCommon, GoalEnv, utils.EzPickle, ABC):
 
 	@torch.no_grad()
 	def reset_done(self, options=None, seed: Optional[int] = None, infos=None):
-		self.state = torch.where(self.done == 1, self.init_qpos, self.state)
+		# self.state = torch.where(self.done == 1, self.init_qpos, self.state)
 		zeros = torch.zeros(self.num_envs, dtype=torch.int).to(self.device)
 		self.steps = torch.where(self.done.flatten() == 1, zeros, self.steps)
 		newgoal = self._sample_goal()
