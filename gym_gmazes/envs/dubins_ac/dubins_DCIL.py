@@ -337,7 +337,8 @@ class GMazeGoalDubins(GMazeCommon, GoalEnv, utils.EzPickle, ABC):
 
 		self._is_success = None
 
-		self.max_episode_steps = (torch.ones((self.num_envs,))*self.max_episode_steps).double()
+		self.max_episode_steps = torch.ones((self.num_envs,1)).double()*20.
+		# print("self.max_episode_steps.shape = ", self.max_episode_steps.shape)
 		# self.set_success_function(default_success_function)
 
 	@torch.no_grad()
@@ -373,9 +374,15 @@ class GMazeGoalDubins(GMazeCommon, GoalEnv, utils.EzPickle, ABC):
 	@torch.no_grad()
 	def set_state(self, state, set_state):
 		# print(type(state) == np.ndarray)
+		# print("\nstate.shape = ", state.shape)
+		# print("state = ", state)
+		# print("self.state.shape = ", self.state.shape)
+		# print("self.state = ", self.state)
+		# print("set_state.shape = ", set_state)
+		# print("set_state = ", set_state)
 		if type(state) == np.ndarray:
 			t_state = torch.from_numpy(state.reshape(self.num_envs, self._obs_dim).copy())
-			t_set_state = torch.from_numpy(set_state)
+			t_set_state = torch.from_numpy(set_state).reshape(self.num_envs, 1)
 			self.state = torch.where(t_set_state == 1, t_state, self.state)
 		else:
 			t_state = torch.clone(state.reshape(self.num_envs, self._obs_dim))
@@ -397,7 +404,7 @@ class GMazeGoalDubins(GMazeCommon, GoalEnv, utils.EzPickle, ABC):
 	def set_goal(self, goal, set_goal):
 		if type(goal) == np.ndarray:
 			t_goal = torch.from_numpy(goal.reshape(self.num_envs, self._achieved_goal_dim).copy())
-			t_set_goal = torch.from_numpy(set_goal)
+			t_set_goal = torch.from_numpy(set_goal).reshape(self.num_envs, 1)
 			self.goal = torch.where(t_set_goal == 1, t_goal, self.goal)
 		else:
 			t_goal = torch.clone(goal.reshape(self.num_envs, self._achieved_goal_dim))
@@ -411,13 +418,23 @@ class GMazeGoalDubins(GMazeCommon, GoalEnv, utils.EzPickle, ABC):
 	def set_max_episode_steps(self, max_episode_steps, set_steps):
 		if type(max_episode_steps) == np.ndarray:
 			t_max_episode_steps = torch.from_numpy(max_episode_steps.reshape(self.num_envs, 1).copy())
+			# print("t_max_episode_steps.shape = ", t_max_episode_steps.shape)
 			t_set_steps = torch.from_numpy(set_steps)
+			# print("t_set_steps.shape = ", t_set_steps.shape)
 			self.max_episode_steps = torch.where(t_set_steps == 1, t_max_episode_steps, self.max_episode_steps)
-			new_steps = torch.zeros(self.num_envs, dtype=torch.int).to(self.device)
+			new_steps = torch.zeros((self.num_envs,1), dtype=torch.int).to(self.device)
+
+			# print("self.max_episode_steps.shape = ", self.max_episode_steps.shape)
+			# print("new_steps.shape = ", new_steps.shape)
+
+			assert self.max_episode_steps.shape[0] == new_steps.shape[0]
+			assert self.max_episode_steps.shape[1] == new_steps.shape[1]
+
 			self.steps = torch.where(t_set_steps == 1, new_steps, self.steps)
 		else:
 			t_max_episode_steps = torch.clone(max_episode_steps.reshape(self.num_envs, 1))
 			self.max_episode_steps = torch.where(set_steps == 1, t_max_episode_steps, self.max_episode_steps)
+
 
 	@torch.no_grad()
 	def _sample_goal(self):
@@ -428,7 +445,7 @@ class GMazeGoalDubins(GMazeCommon, GoalEnv, utils.EzPickle, ABC):
 	def reset(self, options=None, seed: Optional[int] = None, infos=None):
 		self.reset_model()  # reset state to initial value
 		self.goal = self._sample_goal()  # sample goal
-		self.steps = torch.zeros(self.num_envs, dtype=torch.int).to(self.device)
+		self.steps = torch.zeros((self.num_envs,1), dtype=torch.int).to(self.device)
 		return {
 			'observation': self.state.detach().cpu().numpy(),
 			'achieved_goal': self.project_to_goal_space(self.state).detach().cpu().numpy(),
@@ -466,7 +483,16 @@ class GMazeGoalDubins(GMazeCommon, GoalEnv, utils.EzPickle, ABC):
 
 		reward = self.compute_reward(self.project_to_goal_space(self.state), self.goal, {}).reshape(
 			(self.num_envs, 1))
+
+		# print("\n self.steps.shape = ", self.steps.shape)
+		# print("self.steps = ", self.steps)
 		self.steps += 1
+
+		# print("self.steps.shape = ", self.steps.shape)
+		# print("self.steps = ", self.steps)
+		# print("self.max_episode_steps = ", self.max_episode_steps.shape)
+		# print("self.max_episode_steps = ", self.max_episode_steps)
+
 		truncation = (self.steps >= self.max_episode_steps).double().reshape(
 			(self.num_envs, 1))
 
