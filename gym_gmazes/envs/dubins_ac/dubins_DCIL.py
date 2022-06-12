@@ -337,7 +337,7 @@ class GMazeGoalDubins(GMazeCommon, GoalEnv, utils.EzPickle, ABC):
 
 		self._is_success = None
 
-		self.max_episode_steps = torch.ones((self.num_envs,1)).double()*20.
+		self.max_episode_steps = torch.ones((self.num_envs,1)).double()*30.
 		# print("self.max_episode_steps.shape = ", self.max_episode_steps.shape)
 		# self.set_success_function(default_success_function)
 
@@ -455,8 +455,8 @@ class GMazeGoalDubins(GMazeCommon, GoalEnv, utils.EzPickle, ABC):
 	@torch.no_grad()
 	def reset_done(self, options=None, seed: Optional[int] = None, infos=None):
 		# self.state = torch.where(self.done == 1, self.init_qpos, self.state)
-		zeros = torch.zeros(self.num_envs, dtype=torch.int).to(self.device)
-		self.steps = torch.where(self.done.flatten() == 1, zeros, self.steps)
+		zeros = torch.zeros((self.num_envs,1), dtype=torch.int).to(self.device)
+		self.steps = torch.where(self.done == 1, zeros, self.steps)
 		newgoal = self._sample_goal()
 		self.goal = torch.where(self.done == 1, newgoal, self.goal)
 		return {
