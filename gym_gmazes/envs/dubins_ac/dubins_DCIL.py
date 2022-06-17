@@ -292,7 +292,8 @@ def default_compute_reward(
 		# if torch.is_tensor(achieved_goal):
 		#     return (d < distance_threshold).double()
 		# else:
-		return 1.0 * (d <= distance_threshold)
+		# return 1.0 * (d <= distance_threshold)
+		return -1.0 * (d > distance_threshold)
 	else:
 		return -d
 
@@ -496,9 +497,9 @@ class GMazeGoalDubins(GMazeCommon, GoalEnv, utils.EzPickle, ABC):
 		truncation = (self.steps >= self.max_episode_steps).double().reshape(
 			(self.num_envs, 1))
 
-		is_success = torch.clone(reward)
+		is_success = torch.clone(reward) + 1.
 
-		truncation = truncation * (1 - is_success)
+		# truncation = truncation * (1 - is_success)
 		info = {'is_success': is_success.detach().cpu().numpy(),
 				'truncation': truncation.detach().cpu().numpy()}
 		self.done = torch.maximum(truncation, is_success)
