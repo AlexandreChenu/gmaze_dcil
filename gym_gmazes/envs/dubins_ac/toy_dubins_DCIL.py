@@ -69,7 +69,7 @@ class GMazeCommon(Maze):
 	def __init__(self, device: str, num_envs: int = 1):
 
 		args={}
-		args['mazesize'] = 5
+		args['mazesize'] = 2
 		args['random_seed'] = 0
 		args['mazestandard'] = False
 		args['wallthickness'] = 0.1
@@ -83,7 +83,7 @@ class GMazeCommon(Maze):
 		self.device = device
 		utils.EzPickle.__init__(**locals())
 		self.reward_function = None
-		self.delta_t = 0.2
+		self.delta_t = 0.25
 		self.frame_skip = 1
 		self.lines = None
 
@@ -200,7 +200,7 @@ def default_reward_fun(action, new_obs):
 	return torch.zeros(new_obs.shape[0],1)
 
 
-class GMazeDubins(GMazeCommon, gym.Env, utils.EzPickle, ABC):
+class GToyMazeDubins(GMazeCommon, gym.Env, utils.EzPickle, ABC):
 	def __init__(self, device: str = 'cpu', num_envs: int = 1):
 		super().__init__(device, num_envs)
 
@@ -290,7 +290,7 @@ def default_compute_reward(
 		# if torch.is_tensor(achieved_goal):
 		#     return (d < distance_threshold).double()
 		# else:
-		return 1.0 * (d <= distance_threshold)
+		return 1. * (d <= distance_threshold)
 		# return -1.0 * (d > distance_threshold)
 	else:
 		return -d
@@ -303,7 +303,7 @@ def default_success_function(achieved_goal: torch.Tensor, desired_goal: torch.Te
 	return 1.0 * (d <= distance_threshold)
 
 
-class GMazeGoalDubins(GMazeCommon, GoalEnv, utils.EzPickle, ABC):
+class GToyMazeGoalDubins(GMazeCommon, GoalEnv, utils.EzPickle, ABC):
 	def __init__(self, device: str = 'cpu', num_envs: int = 1):
 		super().__init__(device, num_envs)
 
@@ -504,6 +504,7 @@ class GMazeGoalDubins(GMazeCommon, GoalEnv, utils.EzPickle, ABC):
 				'done_from_env': done.detach().cpu().numpy(),
 				'truncation': truncation.detach().cpu().numpy()}
 		self.done = torch.maximum(truncation, is_success)
+		# self.done = torch.zeros(is_success.shape)
 		return (
 			{
 				'observation': self.state.detach().cpu().numpy(),

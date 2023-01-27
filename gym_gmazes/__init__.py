@@ -25,8 +25,32 @@ register(
     entry_point="gym_gmazes.envs:GMazeGoalDubins",
 )
 
-print("|    REGISTERING GMazeDCILDubins-v0 from", envpath())
+print("|    REGISTERING GMazeGoalEmptyDubins-v0 from", envpath())
 register(
-    id="GMazeDCILDubins-v0",
-    entry_point="gym_gmazes.envs:GMazeDCILDubins",
+    id="GMazeGoalEmptyDubins-v0",
+    entry_point="gym_gmazes.envs:GMazeGoalEmptyDubins",
+)
+
+# print("|    REGISTERING GMazeDCILDubins-v0 from", envpath())
+# register(
+#     id="GMazeDCILDubins-v0",
+#     entry_point="gym_gmazes.envs:GMazeDCILDubins",
+# )
+
+print("|    REGISTERING GToyMaze-v0 from", envpath())
+register(
+    id="GToyMaze-v0",
+    entry_point="gym_gmazes.envs:GToyMaze",
+)
+
+print("|    REGISTERING GToyMazeGoal-v0 from", envpath())
+register(
+    id="GToyMazeGoal-v0",
+    entry_point="gym_gmazes.envs:GToyMazeGoal",
+)
+
+print("|    REGISTERING GToyMazeGoalDubins-v0 from", envpath())
+register(
+    id="GToyMazeGoalDubins-v0",
+    entry_point="gym_gmazes.envs:GToyMazeGoalDubins",
 )

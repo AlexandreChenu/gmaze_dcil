@@ -16,6 +16,7 @@ from IPython import embed
 
 from .maze.maze import Maze
 
+
 import matplotlib.pyplot as plt
 
 
@@ -69,7 +70,7 @@ class GMazeCommon(Maze):
 	def __init__(self, device: str, num_envs: int = 1):
 
 		args={}
-		args['mazesize'] = 5
+		args['mazesize'] = 2
 		args['random_seed'] = 0
 		args['mazestandard'] = False
 		args['wallthickness'] = 0.1
@@ -78,13 +79,14 @@ class GMazeCommon(Maze):
 
 		super(GMazeCommon,self).__init__(args['mazesize'],args['mazesize'],seed=args['random_seed'],standard=args['mazestandard'])
 		self.maze_size = int(args['mazesize'])
+		self.empty_grid()
 
 		self.num_envs = num_envs
 		self.device = device
 		utils.EzPickle.__init__(**locals())
 		self.reward_function = None
 		self.delta_t = 0.2
-		self.frame_skip = 1
+		self.frame_skip = 2
 		self.lines = None
 
 		self.thick = args['wallthickness']
@@ -123,8 +125,7 @@ class GMazeCommon(Maze):
 		## update x, y, theta
 		state[:,0] = state[:,0] + MAX_SPEED*torch.cos(state[:,2]) * delta_t
 		state[:,1] = state[:,1] + MAX_SPEED*torch.sin(state[:,2]) * delta_t
-		new_orientation = state[:,2] + steer * delta_t
-
+		new_orientation = state[:,2] + steer * delta_t *2 #for better value visualisation in Empty Dubins Maze 
 
 		## check limit angles
 		b_angle_admissible = torch.logical_and(new_orientation <= 2.0*np.pi, new_orientation >= -2.0*np.pi).reshape(state[:,2].shape).double()
@@ -200,7 +201,7 @@ def default_reward_fun(action, new_obs):
 	return torch.zeros(new_obs.shape[0],1)
 
 
-class GMazeDubins(GMazeCommon, gym.Env, utils.EzPickle, ABC):
+class GMazeEmptyDubins(GMazeCommon, gym.Env, utils.EzPickle, ABC):
 	def __init__(self, device: str = 'cpu', num_envs: int = 1):
 		super().__init__(device, num_envs)
 
@@ -303,7 +304,7 @@ def default_success_function(achieved_goal: torch.Tensor, desired_goal: torch.Te
 	return 1.0 * (d <= distance_threshold)
 
 
-class GMazeGoalDubins(GMazeCommon, GoalEnv, utils.EzPickle, ABC):
+class GMazeGoalEmptyDubins(GMazeCommon, GoalEnv, utils.EzPickle, ABC):
 	def __init__(self, device: str = 'cpu', num_envs: int = 1):
 		super().__init__(device, num_envs)
 
@@ -514,3 +515,15 @@ class GMazeGoalDubins(GMazeCommon, GoalEnv, utils.EzPickle, ABC):
 			self.done.detach().cpu().numpy(),
 			info,
 		)
+
+if __name__ == '__main__':
+
+	env = GMazeGoalDubins()
+	fig, ax = plt.subplots()
+
+	ax.set_xlim(-0.1, 2.1)
+	ax.set_ylim(-0.1, 2.1)
+
+	env.draw(ax, 0.1)
+
+	plt.show()

@@ -16,6 +16,10 @@ from IPython import embed
 
 from .maze.maze import Maze
 
+# from maze.maze import Maze
+# from skill_manager_mazeenv import SkillsManager
+
+
 import matplotlib.pyplot as plt
 
 
@@ -69,7 +73,7 @@ class GMazeCommon(Maze):
 	def __init__(self, device: str, num_envs: int = 1):
 
 		args={}
-		args['mazesize'] = 5
+		args['mazesize'] = 3
 		args['random_seed'] = 0
 		args['mazestandard'] = False
 		args['wallthickness'] = 0.1
@@ -79,26 +83,41 @@ class GMazeCommon(Maze):
 		super(GMazeCommon,self).__init__(args['mazesize'],args['mazesize'],seed=args['random_seed'],standard=args['mazestandard'])
 		self.maze_size = int(args['mazesize'])
 
+		# self.grid[0][1].remove_walls(0,2)
+		# self.grid[1][1].remove_walls(0,2)
+
+		# self.empty_grid()
+		# # for i in range(self.num_rows):
+		# # 	if i != 0:
+		# self.grid[0][0].add_walls(0,1)
+		# self.grid[1][0].add_walls(1,1)
+		#
+		# self.grid[0][1].add_walls(0,2)
+		# # self.grid[1][1].add_walls(1,2)
+		# self.grid[2][1].add_walls(2,2)
+		# self.grid[2][1].add_walls(3,2)
+				# self.grid[i][1].add_walls(i,0)
+
 		self.num_envs = num_envs
 		self.device = device
 		utils.EzPickle.__init__(**locals())
 		self.reward_function = None
 		self.delta_t = 0.2
-		self.frame_skip = 1
+		self.frame_skip = 2
 		self.lines = None
 
 		self.thick = args['wallthickness']
 
 		# initial position + orientation
 		self.init_qpos = torch.tensor(
-			np.tile(np.array([0.5, 0.5, 0.0]), (self.num_envs, 1))
+			np.tile(np.array([0.5, 0.5]), (self.num_envs, 1))
 		).to(self.device)
 		self.steps = None
 		self.done = None
 		self.init_qvel = None  # velocities are not used
 		self.state = self.init_qpos
-		self._obs_dim = 3
-		self._action_dim = 1
+		self._obs_dim = 2
+		self._action_dim = 2
 		high = np.ones(self._action_dim)
 		low = -high
 		self.single_action_space = spaces.Box(low=low, high=high, dtype=np.float64)
@@ -114,25 +133,15 @@ class GMazeCommon(Maze):
 	@torch.no_grad()
 	def update_state(self, state, action, delta_t):
 
-		MAX_SPEED = 0.5
-		MAX_STEER = torch.pi
-		MIN_STEER = -torch.pi
+		action = action/5
 
-		steer = action[:,0]
+		## clip displacements
+		delta_x = torch.where(action[:,0]<= 0.1, action[:,0], 0.1)
+		delta_y = torch.where(action[:,1]<= 0.1, action[:,1], 0.1)
 
 		## update x, y, theta
-		state[:,0] = state[:,0] + MAX_SPEED*torch.cos(state[:,2]) * delta_t
-		state[:,1] = state[:,1] + MAX_SPEED*torch.sin(state[:,2]) * delta_t
-		new_orientation = state[:,2] + steer * delta_t
-
-
-		## check limit angles
-		b_angle_admissible = torch.logical_and(new_orientation <= 2.0*np.pi, new_orientation >= -2.0*np.pi).reshape(state[:,2].shape).double()
-		# b_angle_non_admissible = (1. - b_angle_admissible).reshape(state[:,2].shape)
-
-		# state[:, 2] = (new_orientation + np.pi) % (2.0 * np.pi) - np.pi
-
-		state[:,2] = torch.where(b_angle_admissible==1, new_orientation, state[:,2])
+		state[:,0] = state[:,0] + delta_x
+		state[:,1] = state[:,1] + delta_y
 
 		return state
 
@@ -199,8 +208,30 @@ class GMazeCommon(Maze):
 def default_reward_fun(action, new_obs):
 	return torch.zeros(new_obs.shape[0],1)
 
+# @torch.no_grad()
+# def goal_distance_(goal_a, goal_b):
+# 	assert goal_a.shape[0] == 1
+# 	assert goal_b.shape[0] == 1
+# 	#print("goal_a.shape = ", goal_a.shape)
+# 	#print("goal_b.shape = ", goal_b.shape)
+# 	if torch.is_tensor(goal_a):
+# 		return torch.linalg.norm(goal_a[:,:] - goal_b[:, :], axis=-1)
+# 	else:
+# 		return np.linalg.norm(goal_a[:, :] - goal_b[:, :], axis=-1)
+#
+#
+# @torch.no_grad()
+# def default_reward_fun(
+# 		action, new_obs
+# ):
+# 	desired_goal = np.array([[1.5, 1.5]])
+# 	distance_threshold = 0.1
+# 	reward_type = "sparse"
+# 	d = goal_distance_(new_obs, desired_goal)
+# 	return -d
 
-class GMazeDubins(GMazeCommon, gym.Env, utils.EzPickle, ABC):
+
+class GToyMaze(GMazeCommon, gym.Env, utils.EzPickle, ABC):
 	def __init__(self, device: str = 'cpu', num_envs: int = 1):
 		super().__init__(device, num_envs)
 
@@ -216,6 +247,7 @@ class GMazeDubins(GMazeCommon, gym.Env, utils.EzPickle, ABC):
 
 	@torch.no_grad()
 	def step(self,action: np.ndarray):
+		action = action.astype(np.float64)
 		action = torch.tensor(action).to(self.device)
 
 		new_state = torch.clone(self.state)
@@ -230,8 +262,20 @@ class GMazeDubins(GMazeCommon, gym.Env, utils.EzPickle, ABC):
 		reward = self.reward_function(action, observation).reshape(
 			(self.num_envs, 1))
 		self.steps += 1
-		self.done = torch.zeros((observation.shape))
-		info = {}
+
+		truncation = (self.steps >= self.max_episode_steps).double().reshape(
+			(self.num_envs, 1))
+
+		is_success = torch.clone(reward)
+
+		done = torch.zeros(is_success.shape)
+
+		# truncation = truncation * (1 - is_success)
+		info = {'is_success': is_success.detach().cpu().numpy(),
+				'done_from_env': done.detach().cpu().numpy(),
+				'truncation': truncation.detach().cpu().numpy()}
+		self.done = torch.maximum(truncation, is_success)
+
 		return (
 			observation.detach().cpu().numpy(),
 			reward.detach().cpu().numpy(),
@@ -267,8 +311,8 @@ class GMazeDubins(GMazeCommon, gym.Env, utils.EzPickle, ABC):
 
 @torch.no_grad()
 def goal_distance(goal_a, goal_b):
-	assert goal_a.shape[1] == 2
-	assert goal_b.shape[1] == 2
+	assert goal_a.shape[1] == 1
+	assert goal_b.shape[1] == 1
 	#print("goal_a.shape = ", goal_a.shape)
 	#print("goal_b.shape = ", goal_b.shape)
 	if torch.is_tensor(goal_a):
@@ -303,14 +347,14 @@ def default_success_function(achieved_goal: torch.Tensor, desired_goal: torch.Te
 	return 1.0 * (d <= distance_threshold)
 
 
-class GMazeGoalDubins(GMazeCommon, GoalEnv, utils.EzPickle, ABC):
+class GToyMazeGoal(GMazeCommon, GoalEnv, utils.EzPickle, ABC):
 	def __init__(self, device: str = 'cpu', num_envs: int = 1):
 		super().__init__(device, num_envs)
 
 		high = np.ones(self._obs_dim)
 		low = -high
-		self._achieved_goal_dim = 2
-		self._desired_goal_dim = 2
+		self._achieved_goal_dim = 1
+		self._desired_goal_dim = 1
 		high_achieved_goal = np.ones(self._achieved_goal_dim)
 		low_achieved_goal = -high_achieved_goal
 		high_desired_goal = np.ones(self._desired_goal_dim)
@@ -342,7 +386,7 @@ class GMazeGoalDubins(GMazeCommon, GoalEnv, utils.EzPickle, ABC):
 
 	@torch.no_grad()
 	def project_to_goal_space(self, state):
-		return state[:, :2]
+		return state[:, 1:]
 
 	def get_obs_dim(self):
 		return self._obs_dim
@@ -437,7 +481,7 @@ class GMazeGoalDubins(GMazeCommon, GoalEnv, utils.EzPickle, ABC):
 
 	@torch.no_grad()
 	def _sample_goal(self):
-		return self.project_to_goal_space(torch.rand(self.num_envs, 2) * 2.0 ).double().to(self.device)
+		return (torch.rand(self.num_envs, self._desired_goal_dim) * 2.0 ).reshape(self.num_envs, self._achieved_goal_dim).double().to(self.device)
 
 
 	@torch.no_grad()
@@ -466,6 +510,8 @@ class GMazeGoalDubins(GMazeCommon, GoalEnv, utils.EzPickle, ABC):
 
 	@torch.no_grad()
 	def step(self,action: np.ndarray):
+		action = action.astype(np.float64)
+
 		action = torch.tensor(action).to(self.device)
 
 		new_state = torch.clone(self.state)
@@ -483,27 +529,21 @@ class GMazeGoalDubins(GMazeCommon, GoalEnv, utils.EzPickle, ABC):
 		reward = self.compute_reward(self.project_to_goal_space(self.state), self.goal, {}).reshape(
 			(self.num_envs, 1))
 
-		# print("\n self.steps.shape = ", self.steps.shape)
-		# print("self.steps = ", self.steps)
 		self.steps += 1
-
-		# print("self.steps.shape = ", self.steps.shape)
-		# print("self.steps = ", self.steps)
-		# print("self.max_episode_steps = ", self.max_episode_steps.shape)
-		# print("self.max_episode_steps = ", self.max_episode_steps)
 
 		truncation = (self.steps >= self.max_episode_steps).double().reshape(
 			(self.num_envs, 1))
 
 		is_success = torch.clone(reward)
 
-		done = torch.zeros(is_success.shape)
+		# done = torch.zeros(is_success.shape)
+		done = torch.tensor(intersection)
 
 		# truncation = truncation * (1 - is_success)
 		info = {'is_success': is_success.detach().cpu().numpy(),
 				'done_from_env': done.detach().cpu().numpy(),
 				'truncation': truncation.detach().cpu().numpy()}
-		self.done = torch.maximum(truncation, is_success)
+		self.done = torch.logical_or(done, torch.maximum(truncation, is_success))
 		return (
 			{
 				'observation': self.state.detach().cpu().numpy(),
@@ -514,3 +554,35 @@ class GMazeGoalDubins(GMazeCommon, GoalEnv, utils.EzPickle, ABC):
 			self.done.detach().cpu().numpy(),
 			info,
 		)
+
+
+if __name__ == "__main__":
+
+	env = GToyMazeGoal()
+	obs = env.reset()
+	print(env.goal)
+	trajs = []
+	traj = [obs]
+	n_steps = 500
+
+	print(env.grid)
+
+	# for i in range(n_steps):
+	# 	traj.append(obs)
+	# 	a = env.action_space.sample()
+	# 	obs,_,d,_ = env.step(a)
+	#
+	# 	if d.max():
+	# 		env.reset()
+	# 		trajs.append(traj)
+	# 		traj = []
+
+	fig, ax = plt.subplots()
+	env.plot(ax)
+	#
+	# for traj in trajs:
+	# 	X = [obs["observation"][0,0] for obs in traj]
+	# 	Y = [obs["observation"][0,1] for obs in traj]
+	# 	ax.plot(X,Y)
+
+	plt.show()
