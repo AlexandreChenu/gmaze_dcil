@@ -1,0 +1,8 @@
+Metadata-Version: 2.1
+Name: gym-gmazes-dcil
+Version: 0.1.0
+Summary: Mazes environments for DCIL paper (with OpenAI Gym interface)
+Home-page: https://github.com/AlexandreChenu/gmaze_dcil
+Author: Nicolas Perrin-Gilbert/Alexandre Chenu
+License: LICENSE
+License-File: LICENSE

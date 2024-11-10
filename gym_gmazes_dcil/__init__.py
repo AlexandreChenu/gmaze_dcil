@@ -1,0 +1,27 @@
+import os
+import gymnasium as gym
+from gymnasium.envs.registration import register
+# from gym_gmazes.envs.maze.maze import get_maze
+
+__version__ = "0.1.0"
+
+
+def envpath():
+    resdir = os.path.join(os.path.dirname(__file__))
+    return resdir
+
+
+print("gym-gmazes: ")
+print("|    gym version and path:", gym.__version__, gym.__path__)
+
+print("|    REGISTERING GMazeGoalDubins-v0 from", envpath())
+register(
+    id="GMazeGoalDubins-v0",
+    entry_point="gym_gmazes_dcil.envs:GMazeGoalDubins",
+)
+
+print("|    REGISTERING GToyMazeGoalDubins-v0 from", envpath())
+register(
+    id="GToyMazeGoalDubins-v0",
+    entry_point="gym_gmazes_dcil.envs:GToyMazeGoalDubins",
+)
