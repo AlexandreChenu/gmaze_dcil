@@ -14,6 +14,13 @@ def envpath():
 print("gym-gmazes: ")
 print("|    gym version and path:", gym.__version__, gym.__path__)
 
+
+print("|    REGISTERING GMazeDubins-v0 from", envpath())
+register(
+    id="GMazeDubins-v0",
+    entry_point="gym_gmazes_dcil.envs:GMazeDubins",
+)
+
 print("|    REGISTERING GMazeGoalDubins-v0 from", envpath())
 register(
     id="GMazeGoalDubins-v0",

@@ -113,7 +113,7 @@ class GMazeCommon(Maze):
 		self.action_space = gym.vector.utils.batch_space(
 			self.single_action_space,
 			self.num_envs)
-		self.max_episode_steps = 30
+		self.max_episode_steps = 190
 
 	def set_init_qpos(self, qpos):
 		self.init_qpos = np.tile(np.array(qpos), (self.num_envs, 1))
@@ -242,7 +242,7 @@ class GMazeCommon(Maze):
 
 
 def default_reward_fun(action, new_obs):
-	return np.zeros(new_obs.shape[0],1)
+	return np.zeros((new_obs.shape[0],1))
 
 
 class GMazeDubins(GMazeCommon, gym.Env):
@@ -377,7 +377,7 @@ class GMazeGoalDubins(GMazeCommon, GoalEnv, utils.EzPickle, ABC):
 
 		self._is_success = None
 
-		self.max_episode_steps = np.ones((self.num_envs,1)) * self.max_episode_steps
+		self.max_episode_steps = np.ones((self.num_envs,1)) * 30
 		# print("self.max_episode_steps.shape = ", self.max_episode_steps.shape)
 		# self.set_success_function(default_success_function)
 
